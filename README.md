@@ -26,7 +26,6 @@ This repository contains a Bash script to automate the installation of [Grafana 
 Clone this repository or download the `GrafanaSetup.sh` file to your Linux server.
 
 ```
-wget https://raw.githubusercontent.com/<your-username>/<your-repo>/main/GrafanaSetup.sh
 chmod +x GrafanaSetup.sh
 ```
 
