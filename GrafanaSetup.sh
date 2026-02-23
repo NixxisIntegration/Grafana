@@ -25,8 +25,50 @@ fi
 # --- 2. Check if Grafana is already installed ---
 if command -v grafana-server &> /dev/null; then
     echo "${GREEN}Grafana is already installed on your system.${RESET}"
-    echo "Current service status:"
-    systemctl status grafana-server
+    
+    read -p "Do you want to check for and apply updates to Grafana now? (y/N) [N]: " DO_UPGRADE
+    if [[ ! "$DO_UPGRADE" =~ ^[Yy]$ ]]; then
+        echo "Current service status:"
+        systemctl status grafana-server
+        exit 0
+    fi
+
+    echo -e "${YELLOW}WARNING: It is highly recommended to backup the Grafana database before upgrading to prevent data loss in case of a failed update.${RESET}"
+    read -p "Do you want to backup the Grafana database now? (Y/n) [Y]: " DO_BACKUP
+    if [[ ! "$DO_BACKUP" =~ ^[Nn]$ ]]; then
+        # 1. Backup the database (Safety First)
+        echo "Backing up Grafana database..."
+        cp /var/lib/grafana/grafana.db /var/lib/grafana/grafana.db.bak_$(date +%Y%m%d)
+        echo -e "${GREEN}Backup completed.${RESET}"
+        echo ""
+    else
+        echo -e "${RED}Skipping database backup as requested.${RESET}"
+        echo ""
+    fi
+
+    echo -e "${GREEN}Starting Grafana Update Sequence...${RESET}"
+
+    # 2. Update Package Lists
+    echo "Updating APT repositories..."
+    apt-get update -y
+
+    # 3. Upgrade Grafana
+    echo "Upgrading Grafana package..."
+    apt-get install --only-upgrade grafana -y
+
+    # 4. Update all Plugins
+    echo "Updating all Grafana plugins..."
+    grafana-cli plugins update-all
+
+    # 5. Reload and Restart Service
+    echo "Reloading systemd and restarting Grafana..."
+    systemctl daemon-reload
+    systemctl restart grafana-server
+
+    # 6. Verify Status
+    echo -e "${GREEN}Update Complete! Current Status:${RESET}"
+    systemctl is-active grafana-server
+    
     exit 0
 fi
 
