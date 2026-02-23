@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Update 20260223
 # Script to automate Grafana installation on various Linux distributions.
 # Version 3: Fixes variable name collision with /etc/os-release.
 
