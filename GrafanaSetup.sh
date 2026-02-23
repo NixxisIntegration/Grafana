@@ -27,7 +27,37 @@ fi
 if command -v grafana-server &> /dev/null; then
     echo "${GREEN}Grafana is already installed on your system.${RESET}"
     
-    read -p "Do you want to check for and apply updates to Grafana now? (y/N) [N]: " DO_UPGRADE
+    # Check if an update is available
+    echo "Checking for available Grafana updates..."
+    UPDATE_AVAILABLE=false
+    
+    if command -v apt-get &> /dev/null; then
+        apt-get update -y > /dev/null
+        if apt-get --just-print upgrade grafana | grep -q "^Inst grafana"; then
+            UPDATE_AVAILABLE=true
+        fi
+    elif command -v yum &> /dev/null; then
+        if yum check-update grafana &> /dev/null; then
+            # yum check-update returns 100 if updates are available
+            :
+        elif [ $? -eq 100 ]; then
+            UPDATE_AVAILABLE=true
+        fi
+    elif command -v zypper &> /dev/null; then
+        if zypper list-updates | grep -q "grafana"; then
+            UPDATE_AVAILABLE=true
+        fi
+    fi
+
+    if [ "$UPDATE_AVAILABLE" = false ]; then
+        echo "Grafana is already up to date."
+        echo "Current service status:"
+        systemctl status grafana-server
+        exit 0
+    fi
+
+    echo "${YELLOW}An update for Grafana is available!${RESET}"
+    read -p "Do you want to apply the update now? (y/N) [N]: " DO_UPGRADE
     if [[ ! "$DO_UPGRADE" =~ ^[Yy]$ ]]; then
         echo "Current service status:"
         systemctl status grafana-server
@@ -49,15 +79,17 @@ if command -v grafana-server &> /dev/null; then
 
     echo -e "${GREEN}Starting Grafana Update Sequence...${RESET}"
 
-    # 2. Update Package Lists
-    echo "Updating APT repositories..."
-    apt-get update -y
-
-    # 3. Upgrade Grafana
+    # 2. Upgrade Grafana based on package manager
     echo "Upgrading Grafana package..."
-    apt-get install --only-upgrade grafana -y
+    if command -v apt-get &> /dev/null; then
+        apt-get install --only-upgrade grafana -y
+    elif command -v yum &> /dev/null; then
+        yum update grafana -y
+    elif command -v zypper &> /dev/null; then
+        zypper update -y grafana
+    fi
 
-    # 4. Update all Plugins
+    # 3. Update all Plugins
     echo "Updating all Grafana plugins..."
     grafana-cli plugins update-all
 
