@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Update 20260223
+# Update 20260311
 # Script to automate Grafana installation on various Linux distributions.
 # Version 3: Fixes variable name collision with /etc/os-release.
 
 # --- Configuration ---
-DEFAULT_GRAFANA_VERSION="12.1.0"
+DEFAULT_GRAFANA_VERSION="12.4.1"
 GRAFANA_URL="https://grafana.com/grafana/download?edition=oss"
 
 # --- Colors for output ---
@@ -16,6 +16,27 @@ BLUE=$(tput setaf 4)
 RESET=$(tput sgr0)
 
 echo "${BLUE}--- Grafana Installer ---${RESET}"
+
+setup_grafana_apt_repo() {
+    local keyring_dir="/etc/apt/keyrings"
+    local keyring_file="${keyring_dir}/grafana.gpg"
+    local repo_file="/etc/apt/sources.list.d/grafana.list"
+    local repo_entry="deb [signed-by=${keyring_file}] https://apt.grafana.com stable main"
+
+    echo "Configuring Grafana APT repository..."
+    mkdir -p /etc/apt/sources.list.d "${keyring_dir}"
+
+    if ! command -v gpg &> /dev/null || ! command -v wget &> /dev/null; then
+        apt-get update > /dev/null
+        apt-get install -y gnupg ca-certificates wget
+    fi
+
+    if [ ! -f "${keyring_file}" ] || [ ! -s "${keyring_file}" ]; then
+        wget -q -O- https://apt.grafana.com/gpg.key | gpg --dearmor > "${keyring_file}"
+    fi
+
+    printf '%s\n' "${repo_entry}" > "${repo_file}"
+}
 
 # --- 1. Root Check ---
 if [ "$EUID" -ne 0 ]; then
@@ -32,6 +53,7 @@ if command -v grafana-server &> /dev/null; then
     UPDATE_AVAILABLE=false
     
     if command -v apt-get &> /dev/null; then
+        setup_grafana_apt_repo
         apt-get update -y > /dev/null
         if apt-get --just-print upgrade grafana | grep -q "^Inst grafana"; then
             UPDATE_AVAILABLE=true
@@ -82,6 +104,8 @@ if command -v grafana-server &> /dev/null; then
     # 2. Upgrade Grafana based on package manager
     echo "Upgrading Grafana package..."
     if command -v apt-get &> /dev/null; then
+        setup_grafana_apt_repo
+        apt-get update -y
         apt-get install --only-upgrade grafana -y
     elif command -v yum &> /dev/null; then
         yum update grafana -y
@@ -140,7 +164,8 @@ install_grafana() {
             echo "Detected Debian-based system (Ubuntu/Debian)."
             echo "Installing dependencies..."
             apt-get update > /dev/null
-            apt-get install -y adduser libfontconfig1 musl wget
+            apt-get install -y adduser libfontconfig1 musl wget gnupg ca-certificates
+            setup_grafana_apt_repo
             
             DEB_FILE="grafana_${GRAFANA_VERSION}_amd64.deb"
             DOWNLOAD_URL="https://dl.grafana.com/oss/release/${DEB_FILE}"

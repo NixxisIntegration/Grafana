@@ -6,6 +6,7 @@ This repository contains a Bash script to automate the installation of [Grafana 
 - **Automatic detection** of your Linux distribution (Debian/Ubuntu, RHEL/CentOS/Fedora, SUSE/OpenSUSE)
 - **Version selection**: Choose which Grafana version to install
 - **Interactive Upgrades**: Offers to safely update Grafana and its plugins if an existing installation is detected
+- **APT repository bootstrap**: Automatically creates the Grafana APT source on Debian/Ubuntu so upgrades work reliably
 - **Database Backups**: Prompts to backup the existing Grafana database before applying an upgrade
 - **Dependency installation**
 - **Service management**: Starts and enables the Grafana service after installation
@@ -67,6 +68,7 @@ Thank you for using the Grafana Installer!
 
 ## Notes
 - If an existing Grafana installation is detected, the script will prompt you to update it instead of proceeding with a fresh install.
+- On Debian/Ubuntu, the script now ensures `/etc/apt/sources.list.d/grafana.list` exists and refreshes APT before checking or applying a Grafana upgrade.
 - Only tested on x86_64 systems.
 - For the latest versions, always check the [official Grafana downloads page](https://grafana.com/grafana/download?edition=oss).
 
